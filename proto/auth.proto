@@ -49,7 +49,3 @@ service AuthService {
 }
 
 
-
-message test {
-    string test = 1;
-}
