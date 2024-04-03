@@ -89,7 +89,7 @@ func (s *AuthServer) Auth(ctx context.Context, req *authpb.AuthReq) (*authpb.Aut
 		ProviderUserId: req.ProviderUserId,
 	})
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "Cannot find account")
+		return nil, status.Errorf(codes.NotFound, "계정이 존재하지 않음")
 	}
 
 	access_token, err := s.generateJWTToken(accountResp.Account)
