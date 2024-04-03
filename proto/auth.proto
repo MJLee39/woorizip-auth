@@ -50,6 +50,6 @@ service AuthService {
 
 
 
-message test1 {
-    string test1 = 1;
+message test2 {
+    string test1 = 2;
 }
