@@ -48,3 +48,8 @@ service AuthService {
     rpc AuthLogout(AuthLogoutReq) returns (AuthLogoutResp) {} // 토큰 삭제
 }
 
+
+
+message test {
+    string test = 1;
+}
