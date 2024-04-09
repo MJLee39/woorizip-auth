@@ -2,14 +2,15 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"os"
 	"time"
 
+	"aidanwoods.dev/go-paseto"
 	"github.com/TeamWAF/woorizip-account/pb/accountpb"
 	"github.com/TeamWAF/woorizip-auth/pb/authpb"
-	"github.com/dgrijalva/jwt-go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -18,21 +19,30 @@ import (
 )
 
 const (
-	defaultSigningKey = "7f9347b402a118a7a10cebee68b999a9546dc62cae864d47a6be0f133390f49c20b6fb5d2d6d35bc5faf5b66cc2b0d38cb1019ecee5b6d236e3ec309212a1a62"
-	// defaultTokenExpiration     = time.Hour * 24
-	defaultTokenExpiration     = time.Second * 1
-	defaultRefreshTokenExpirat = time.Hour * 24 * 7
+	defaultTokenExpiration        = time.Hour * 24
+	defaultRefreshTokenExpiration = time.Hour * 24 * 7
+)
+
+var (
+	signingKeyByte = []byte{149, 196, 179, 66, 205, 186, 90, 225, 216, 112, 143, 60, 97, 113, 182, 158, 139, 44, 130, 137, 36, 151, 204, 65, 216, 228, 214, 191, 70, 162, 99, 63, 204, 198, 43, 46, 162, 135, 84, 115, 198, 104, 142, 135, 66, 165, 103, 110, 201, 103, 254, 92, 240, 147, 160, 27, 200, 251, 7, 163, 224, 108, 77, 71}
 )
 
 func main() {
-	signingKey := getEnv("SIGNING_KEY", defaultSigningKey)
+
 	serverAddr := getEnv("SERVER_ADDR", ":1337")
 	listenAddr := getEnv("LISTEN_ADDR", ":50052")
+
+	secretKey, err := paseto.NewV4AsymmetricSecretKeyFromBytes(signingKeyByte)
+	if err != nil {
+		log.Fatalf("Failed to create secret key: %v", err)
+	}
+
+	log.Println("secretKey: ", secretKey)
 
 	conn, accountClient := setupAccountServiceClient(serverAddr)
 	defer conn.Close()
 
-	authServer := newAuthServer(accountClient, signingKey)
+	authServer := newAuthServer(accountClient, secretKey)
 	startGRPCServer(listenAddr, authServer)
 }
 
@@ -51,10 +61,10 @@ func setupAccountServiceClient(serverAddr string) (*grpc.ClientConn, accountpb.A
 	return conn, accountpb.NewAccountServiceClient(conn)
 }
 
-func newAuthServer(accountClient accountpb.AccountServiceClient, signingKey string) *AuthServer {
+func newAuthServer(accountClient accountpb.AccountServiceClient, secretKey paseto.V4AsymmetricSecretKey) *AuthServer {
 	return &AuthServer{
 		accountClient: accountClient,
-		signingKey:    signingKey,
+		secretKey:     secretKey,
 	}
 }
 
@@ -75,7 +85,7 @@ func startGRPCServer(listenAddr string, authServer *AuthServer) {
 type AuthServer struct {
 	authpb.UnimplementedAuthServiceServer
 	accountClient accountpb.AccountServiceClient
-	signingKey    string
+	secretKey     paseto.V4AsymmetricSecretKey
 }
 
 // Auth provider 유형과 provider 유저 아이디로 account 정보를 찾아서 JWT 토큰을 발급한다.
@@ -92,9 +102,9 @@ func (s *AuthServer) Auth(ctx context.Context, req *authpb.AuthReq) (*authpb.Aut
 		return nil, status.Errorf(codes.NotFound, "계정이 존재하지 않음")
 	}
 
-	access_token, err := s.generateJWTToken(accountResp.Account)
+	access_token, err := s.generateAccessToken(accountResp.Account)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Failed to generate JWT token: %v", err)
+		return nil, status.Errorf(codes.Internal, "Failed to generate access token: %v", err)
 	}
 
 	refresh_token, err := s.generateRefreshToken(accountResp.Account.Id)
@@ -105,84 +115,84 @@ func (s *AuthServer) Auth(ctx context.Context, req *authpb.AuthReq) (*authpb.Aut
 	return &authpb.AuthResp{AccessToken: access_token, RefreshToken: refresh_token, Error: ""}, nil
 }
 
-// JWT 토큰을 검증하고, account 정보를 반환한다.
 func (s *AuthServer) AuthCheck(ctx context.Context, req *authpb.AuthCheckReq) (*authpb.AuthCheckResp, error) {
-
-	// req가 nil인 경우
 	if req == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Request is nil")
 	}
 
-	// JWT 토큰을 파싱한다.
-	token, err := jwt.Parse(req.Token, func(token *jwt.Token) (interface{}, error) {
-		return []byte(s.signingKey), nil
-	})
+	tokenString := req.Token
+	parser := paseto.NewParser()
+
+	// SecretKey로부터 PublicKey 생성
+	publicKey := s.secretKey.Public()
+
+	// Paseto 토큰 파싱 및 검증
+	token, err := parser.ParseV4Public(publicKey, tokenString, nil)
 	if err != nil {
-		return &authpb.AuthCheckResp{Valid: false, Error: err.Error()}, nil
-		// return nil, status.Errorf(codes.Unauthenticated, )
+		log.Println("Failed to parse token: ", err)
+		return nil, err
 	}
 
-	// 토큰을 파싱해 exp를 가져온다
-	claims := token.Claims.(jwt.MapClaims)
-	exp := claims["exp"].(int64)
-
-	// 토큰의 만료 시간을 확인한다.
-	if time.Now().Unix() > exp {
-		return &authpb.AuthCheckResp{Valid: false, Error: "JWT token has expired"}, nil
+	// 토큰 규칙 검증
+	rules := []paseto.Rule{
+		paseto.ForAudience("audience"),
+		paseto.IssuedBy("issuer"),
+		paseto.Subject("subject"),
+		paseto.NotBeforeNbf(),
+		paseto.NotExpired(),
+		paseto.IdentifiedBy("identifier"),
 	}
 
-	// 토큰이 유효하지 않은 경우 false를 반환한다.
-	if !token.Valid {
-		return &authpb.AuthCheckResp{Valid: false, Error: "Invalid JWT token"}, nil
+	for _, rule := range rules {
+		if err := rule(*token); err != nil {
+			// 검증 실패 처리
+			fmt.Println("Token validation failed:", err)
+			return &authpb.AuthCheckResp{
+				Valid: false,
+				Error: err.Error(),
+			}, nil
+		}
 	}
 
-	// 토큰이 유효할 경우 true를 반환한다.
-	return &authpb.AuthCheckResp{Valid: true}, nil
+	return &authpb.AuthCheckResp{
+		Valid: true,
+		Error: "",
+	}, nil
 }
 
-func (s *AuthServer) AuthLogout(ctx context.Context, req *authpb.AuthLogoutReq) (*authpb.AuthLogoutResp, error) {
-	token, err := jwt.Parse(req.Token, func(token *jwt.Token) (interface{}, error) {
-		return []byte(s.signingKey), nil
-	})
-	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, "Failed to parse JWT token: %v", err)
-	}
+func (s *AuthServer) generateAccessToken(account *accountpb.Account) (string, error) {
+	token := paseto.NewToken()
 
-	// Check if the token is valid
-	if !token.Valid {
-		return nil, status.Errorf(codes.Unauthenticated, "Invalid JWT token")
-	}
+	token.SetAudience("audience")
+	token.SetJti("identifier")
+	token.SetIssuer("issuer")
+	token.SetSubject("subject")
 
-	return &authpb.AuthLogoutResp{}, nil
-}
+	token.SetExpiration(time.Now().Add(defaultTokenExpiration))
+	token.SetNotBefore(time.Now())
+	token.SetIssuedAt(time.Now())
 
-func (s *AuthServer) generateJWTToken(account *accountpb.Account) (string, error) {
-	token := jwt.New(jwt.SigningMethodHS256)
+	token.SetString("id", account.Id)
+	token.SetString("role", account.Role)
 
-	claims := token.Claims.(jwt.MapClaims)
-	claims["id"] = account.Id
-	claims["role"] = account.Role
-	claims["exp"] = time.Now().Add(defaultTokenExpiration).Unix()
-
-	tokenString, err := token.SignedString([]byte(s.signingKey))
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
+	signed := token.V4Sign(s.secretKey, nil)
+	return signed, nil
 }
 
 func (s *AuthServer) generateRefreshToken(accountId string) (string, error) {
-	token := jwt.New(jwt.SigningMethodHS256)
+	token := paseto.NewToken()
 
-	claims := token.Claims.(jwt.MapClaims)
-	claims["id"] = accountId
-	claims["exp"] = time.Now().Add(defaultRefreshTokenExpirat).Unix()
+	token.SetAudience("audience")
+	token.SetJti("identifier")
+	token.SetIssuer("issuer")
+	token.SetSubject("subject")
 
-	tokenString, err := token.SignedString([]byte(s.signingKey))
-	if err != nil {
-		return "", err
-	}
+	token.SetExpiration(time.Now().Add(defaultRefreshTokenExpiration))
+	token.SetNotBefore(time.Now())
+	token.SetIssuedAt(time.Now())
 
-	return tokenString, nil
+	token.SetString("id", accountId)
+
+	signed := token.V4Sign(s.secretKey, nil)
+	return signed, nil
 }
