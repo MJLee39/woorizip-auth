@@ -8,7 +8,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	proto "github.com/teamwaf/woorizip-auth/proto"
+	proto "github.com/TeamWAF/woorizip-auth/proto"
 	http "net/http"
 	strings "strings"
 )
