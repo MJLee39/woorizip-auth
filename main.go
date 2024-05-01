@@ -10,7 +10,7 @@ import (
 
 	"aidanwoods.dev/go-paseto"
 	"github.com/TeamWAF/woorizip-account/pb/accountpb"
-	"github.com/TeamWAF/woorizip-auth/pb/authpb"
+	authpb "github.com/TeamWAF/woorizip-auth/gen/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
