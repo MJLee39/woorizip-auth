@@ -5,10 +5,10 @@
 package protoconnect
 
 import (
-	proto "buf.build/teamwaf/auth/proto"
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
+	proto "github.com/teamwaf/woorizip-auth/proto"
 	http "net/http"
 	strings "strings"
 )
