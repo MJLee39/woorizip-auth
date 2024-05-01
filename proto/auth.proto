@@ -4,6 +4,36 @@ package auth;
 
 option go_package = "/authpb";
 
+import "google/api/annotations.proto";
+
+service AuthService {
+    rpc Auth(AuthReq) returns (AuthResp) {
+        option (google.api.http) = {
+            post: "/auth"
+            body: "*"
+        };
+    }  // 토큰 발급
+    rpc AuthCheck(AuthCheckReq) returns (AuthCheckResp) {
+        option (google.api.http) = {
+            post: "/auth/check"
+            body: "*"
+        };
+    } // 토큰 유효성 체크
+    rpc AuthRefresh(AuthRefreshReq) returns (AuthRefreshResp) {
+        option (google.api.http) = {
+            post: "/auth/refresh"
+            body: "*"
+        };
+    } // 토큰 갱신
+    rpc AuthLogout(AuthLogoutReq) returns (AuthLogoutResp) {
+        option (google.api.http) = {
+            post: "/auth/logout"
+            body: "*"
+        };
+    } // 토큰 삭제
+}
+
+
 message AuthReq {
     string provider = 1;
     string provider_user_id = 2;
@@ -41,11 +71,6 @@ message AuthLogoutResp {
     string error = 1;
 }
 
-service AuthService {
-    rpc Auth(AuthReq) returns (AuthResp) {}  // 토큰 발급
-    rpc AuthCheck(AuthCheckReq) returns (AuthCheckResp) {} // 토큰 유효성 체크
-    rpc AuthRefresh(AuthRefreshReq) returns (AuthRefreshResp) {} // 토큰 갱신
-    rpc AuthLogout(AuthLogoutReq) returns (AuthLogoutResp) {} // 토큰 삭제
-}
+
 
 

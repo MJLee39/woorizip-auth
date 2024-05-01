@@ -154,6 +154,36 @@ func (s *AuthServer) AuthCheck(ctx context.Context, req *authpb.AuthCheckReq) (*
 		}
 	}
 
+	// 토큰 검증 성공 처리
+
+	// 토큰을 디코딩 하여 id와 role을 가져온다.
+	id, err := token.GetString("id")
+	if err != nil {
+		return nil, err
+	}
+
+	// account 정보를 가져온다.
+	accountResp, err := s.accountClient.GetAccount(ctx, &accountpb.GetAccountReq{
+		AccountId: id,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	// account 정보가 없으면 인증 실패 처리
+	if accountResp.Account == nil {
+		return &authpb.AuthCheckResp{
+			Valid: false,
+			Error: "Account not found",
+		}, nil
+	}
+
+	// 인증 성공 처리
+	log.Println("Token validation successful")
+	log.Println("Account ID:", accountResp.Account.Id)
+	log.Println("Account Role:", accountResp.Account.Role)
+
 	return &authpb.AuthCheckResp{
 		Valid: true,
 		Error: "",
