@@ -2,11 +2,11 @@
 // source: proto/auth.proto
 
 /*
-Package proto is a reverse proxy.
+Package authv1 is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package proto
+package authv1
 
 import (
 	"context"
@@ -149,7 +149,7 @@ func RegisterAuthServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/auth.AuthService/Auth", runtime.WithHTTPPathPattern("/auth"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/auth.v1.AuthService/Auth", runtime.WithHTTPPathPattern("/auth"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -174,7 +174,7 @@ func RegisterAuthServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/auth.AuthService/AuthCheck", runtime.WithHTTPPathPattern("/auth/check"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/auth.v1.AuthService/AuthCheck", runtime.WithHTTPPathPattern("/auth/check"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -199,7 +199,7 @@ func RegisterAuthServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/auth.AuthService/AuthRefresh", runtime.WithHTTPPathPattern("/auth/refresh"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/auth.v1.AuthService/AuthRefresh", runtime.WithHTTPPathPattern("/auth/refresh"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -224,7 +224,7 @@ func RegisterAuthServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/auth.AuthService/AuthLogout", runtime.WithHTTPPathPattern("/auth/logout"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/auth.v1.AuthService/AuthLogout", runtime.WithHTTPPathPattern("/auth/logout"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -288,7 +288,7 @@ func RegisterAuthServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/auth.AuthService/Auth", runtime.WithHTTPPathPattern("/auth"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/auth.v1.AuthService/Auth", runtime.WithHTTPPathPattern("/auth"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -310,7 +310,7 @@ func RegisterAuthServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/auth.AuthService/AuthCheck", runtime.WithHTTPPathPattern("/auth/check"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/auth.v1.AuthService/AuthCheck", runtime.WithHTTPPathPattern("/auth/check"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -332,7 +332,7 @@ func RegisterAuthServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/auth.AuthService/AuthRefresh", runtime.WithHTTPPathPattern("/auth/refresh"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/auth.v1.AuthService/AuthRefresh", runtime.WithHTTPPathPattern("/auth/refresh"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -354,7 +354,7 @@ func RegisterAuthServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/auth.AuthService/AuthLogout", runtime.WithHTTPPathPattern("/auth/logout"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/auth.v1.AuthService/AuthLogout", runtime.WithHTTPPathPattern("/auth/logout"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return

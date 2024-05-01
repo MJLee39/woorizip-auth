@@ -3,7 +3,7 @@ version: v1
 managed:
   enabled: true
   go_package_prefix:
-    default: github.com/TeamWAF/woorizip-auth
+    default: github.com/TeamWAF/woorizip-auth/gen/
     except:
       - buf.build/googleapis/googleapis
 plugins:

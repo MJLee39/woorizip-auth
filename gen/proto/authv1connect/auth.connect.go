@@ -2,13 +2,13 @@
 //
 // Source: proto/auth.proto
 
-package protoconnect
+package authv1connect
 
 import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	proto "github.com/TeamWAF/woorizip-auth/proto"
+	proto "github.com/TeamWAF/woorizip-auth/gen/proto"
 	http "net/http"
 	strings "strings"
 )
@@ -22,7 +22,7 @@ const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// AuthServiceName is the fully-qualified name of the AuthService service.
-	AuthServiceName = "auth.AuthService"
+	AuthServiceName = "auth.v1.AuthService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -34,13 +34,13 @@ const (
 // period.
 const (
 	// AuthServiceAuthProcedure is the fully-qualified name of the AuthService's Auth RPC.
-	AuthServiceAuthProcedure = "/auth.AuthService/Auth"
+	AuthServiceAuthProcedure = "/auth.v1.AuthService/Auth"
 	// AuthServiceAuthCheckProcedure is the fully-qualified name of the AuthService's AuthCheck RPC.
-	AuthServiceAuthCheckProcedure = "/auth.AuthService/AuthCheck"
+	AuthServiceAuthCheckProcedure = "/auth.v1.AuthService/AuthCheck"
 	// AuthServiceAuthRefreshProcedure is the fully-qualified name of the AuthService's AuthRefresh RPC.
-	AuthServiceAuthRefreshProcedure = "/auth.AuthService/AuthRefresh"
+	AuthServiceAuthRefreshProcedure = "/auth.v1.AuthService/AuthRefresh"
 	// AuthServiceAuthLogoutProcedure is the fully-qualified name of the AuthService's AuthLogout RPC.
-	AuthServiceAuthLogoutProcedure = "/auth.AuthService/AuthLogout"
+	AuthServiceAuthLogoutProcedure = "/auth.v1.AuthService/AuthLogout"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -52,7 +52,7 @@ var (
 	authServiceAuthLogoutMethodDescriptor  = authServiceServiceDescriptor.Methods().ByName("AuthLogout")
 )
 
-// AuthServiceClient is a client for the auth.AuthService service.
+// AuthServiceClient is a client for the auth.v1.AuthService service.
 type AuthServiceClient interface {
 	Auth(context.Context, *connect.Request[proto.AuthReq]) (*connect.Response[proto.AuthResp], error)
 	AuthCheck(context.Context, *connect.Request[proto.AuthCheckReq]) (*connect.Response[proto.AuthCheckResp], error)
@@ -60,7 +60,7 @@ type AuthServiceClient interface {
 	AuthLogout(context.Context, *connect.Request[proto.AuthLogoutReq]) (*connect.Response[proto.AuthLogoutResp], error)
 }
 
-// NewAuthServiceClient constructs a client for the auth.AuthService service. By default, it uses
+// NewAuthServiceClient constructs a client for the auth.v1.AuthService service. By default, it uses
 // the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and sends
 // uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
 // connect.WithGRPCWeb() options.
@@ -105,27 +105,27 @@ type authServiceClient struct {
 	authLogout  *connect.Client[proto.AuthLogoutReq, proto.AuthLogoutResp]
 }
 
-// Auth calls auth.AuthService.Auth.
+// Auth calls auth.v1.AuthService.Auth.
 func (c *authServiceClient) Auth(ctx context.Context, req *connect.Request[proto.AuthReq]) (*connect.Response[proto.AuthResp], error) {
 	return c.auth.CallUnary(ctx, req)
 }
 
-// AuthCheck calls auth.AuthService.AuthCheck.
+// AuthCheck calls auth.v1.AuthService.AuthCheck.
 func (c *authServiceClient) AuthCheck(ctx context.Context, req *connect.Request[proto.AuthCheckReq]) (*connect.Response[proto.AuthCheckResp], error) {
 	return c.authCheck.CallUnary(ctx, req)
 }
 
-// AuthRefresh calls auth.AuthService.AuthRefresh.
+// AuthRefresh calls auth.v1.AuthService.AuthRefresh.
 func (c *authServiceClient) AuthRefresh(ctx context.Context, req *connect.Request[proto.AuthRefreshReq]) (*connect.Response[proto.AuthRefreshResp], error) {
 	return c.authRefresh.CallUnary(ctx, req)
 }
 
-// AuthLogout calls auth.AuthService.AuthLogout.
+// AuthLogout calls auth.v1.AuthService.AuthLogout.
 func (c *authServiceClient) AuthLogout(ctx context.Context, req *connect.Request[proto.AuthLogoutReq]) (*connect.Response[proto.AuthLogoutResp], error) {
 	return c.authLogout.CallUnary(ctx, req)
 }
 
-// AuthServiceHandler is an implementation of the auth.AuthService service.
+// AuthServiceHandler is an implementation of the auth.v1.AuthService service.
 type AuthServiceHandler interface {
 	Auth(context.Context, *connect.Request[proto.AuthReq]) (*connect.Response[proto.AuthResp], error)
 	AuthCheck(context.Context, *connect.Request[proto.AuthCheckReq]) (*connect.Response[proto.AuthCheckResp], error)
@@ -163,7 +163,7 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceAuthLogoutMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	return "/auth.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return "/auth.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthServiceAuthProcedure:
 			authServiceAuthHandler.ServeHTTP(w, r)
@@ -183,17 +183,17 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 type UnimplementedAuthServiceHandler struct{}
 
 func (UnimplementedAuthServiceHandler) Auth(context.Context, *connect.Request[proto.AuthReq]) (*connect.Response[proto.AuthResp], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("auth.AuthService.Auth is not implemented"))
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("auth.v1.AuthService.Auth is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) AuthCheck(context.Context, *connect.Request[proto.AuthCheckReq]) (*connect.Response[proto.AuthCheckResp], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("auth.AuthService.AuthCheck is not implemented"))
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("auth.v1.AuthService.AuthCheck is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) AuthRefresh(context.Context, *connect.Request[proto.AuthRefreshReq]) (*connect.Response[proto.AuthRefreshResp], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("auth.AuthService.AuthRefresh is not implemented"))
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("auth.v1.AuthService.AuthRefresh is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) AuthLogout(context.Context, *connect.Request[proto.AuthLogoutReq]) (*connect.Response[proto.AuthLogoutResp], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("auth.AuthService.AuthLogout is not implemented"))
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("auth.v1.AuthService.AuthLogout is not implemented"))
 }
