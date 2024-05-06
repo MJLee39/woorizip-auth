@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"time"
 
 	"aidanwoods.dev/go-paseto"
-	"github.com/TeamWAF/woorizip-account/pb/accountpb"
-	authpb "github.com/TeamWAF/woorizip-auth/gen/proto"
+	"github.com/TeamWAF/woorizip-auth/utils"
+
+	"github.com/TeamWAF/woorizip-gateway/gen/proto"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -21,6 +22,8 @@ import (
 const (
 	defaultTokenExpiration        = time.Hour * 24
 	defaultRefreshTokenExpiration = time.Hour * 24 * 7
+	listenPort                    = ":8080"
+	accountServer                 = "service-account:80"
 )
 
 var (
@@ -29,9 +32,6 @@ var (
 
 func main() {
 
-	serverAddr := getEnv("SERVER_ADDR", ":1337")
-	listenAddr := getEnv("LISTEN_ADDR", ":50052")
-
 	secretKey, err := paseto.NewV4AsymmetricSecretKeyFromBytes(signingKeyByte)
 	if err != nil {
 		log.Fatalf("Failed to create secret key: %v", err)
@@ -39,29 +39,22 @@ func main() {
 
 	log.Println("secretKey: ", secretKey)
 
-	conn, accountClient := setupAccountServiceClient(serverAddr)
+	conn, accountClient := setupAccountServiceClient(accountServer)
 	defer conn.Close()
 
 	authServer := newAuthServer(accountClient, secretKey)
-	startGRPCServer(listenAddr, authServer)
+	startGRPCServer(listenPort, authServer)
 }
 
-func getEnv(key, fallback string) string {
-	if value, exists := os.LookupEnv(key); exists {
-		return value
-	}
-	return fallback
-}
-
-func setupAccountServiceClient(serverAddr string) (*grpc.ClientConn, accountpb.AccountServiceClient) {
+func setupAccountServiceClient(serverAddr string) (*grpc.ClientConn, proto.AccountServiceClient) {
 	conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("Failed to connect to account service at %s: %v", serverAddr, err)
 	}
-	return conn, accountpb.NewAccountServiceClient(conn)
+	return conn, proto.NewAccountServiceClient(conn)
 }
 
-func newAuthServer(accountClient accountpb.AccountServiceClient, secretKey paseto.V4AsymmetricSecretKey) *AuthServer {
+func newAuthServer(accountClient proto.AccountServiceClient, secretKey paseto.V4AsymmetricSecretKey) *AuthServer {
 	return &AuthServer{
 		accountClient: accountClient,
 		secretKey:     secretKey,
@@ -73,8 +66,10 @@ func startGRPCServer(listenAddr string, authServer *AuthServer) {
 	if err != nil {
 		log.Fatalf("Failed to listen on %s: %v", listenAddr, err)
 	}
-	s := grpc.NewServer()
-	authpb.RegisterAuthServiceServer(s, authServer)
+	s := grpc.NewServer(
+		grpc.UnaryInterceptor(utils.LoggingInterceptor()), // Unary Interceptor 추가
+	)
+	proto.RegisterAuthServiceServer(s, authServer)
 	reflection.Register(s)
 	log.Printf("Starting gRPC server on %s", listenAddr)
 	if err := s.Serve(lis); err != nil {
@@ -83,18 +78,18 @@ func startGRPCServer(listenAddr string, authServer *AuthServer) {
 }
 
 type AuthServer struct {
-	authpb.UnimplementedAuthServiceServer
-	accountClient accountpb.AccountServiceClient
+	proto.UnimplementedAuthServiceServer
+	accountClient proto.AccountServiceClient
 	secretKey     paseto.V4AsymmetricSecretKey
 }
 
 // Auth provider 유형과 provider 유저 아이디로 account 정보를 찾아서 JWT 토큰을 발급한다.
-func (s *AuthServer) Auth(ctx context.Context, req *authpb.AuthReq) (*authpb.AuthResp, error) {
+func (s *AuthServer) Auth(ctx context.Context, req *proto.AuthReq) (*proto.AuthResp, error) {
 	if req == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Request is nil")
 	}
 
-	accountResp, err := s.accountClient.GetAccountByProvider(ctx, &accountpb.GetAccountByProviderReq{
+	accountResp, err := s.accountClient.GetAccountByProvider(ctx, &proto.GetAccountByProviderReq{
 		Provider:       req.Provider,
 		ProviderUserId: req.ProviderUserId,
 	})
@@ -112,10 +107,10 @@ func (s *AuthServer) Auth(ctx context.Context, req *authpb.AuthReq) (*authpb.Aut
 		return nil, status.Errorf(codes.Internal, "Failed to generate refresh token: %v", err)
 	}
 
-	return &authpb.AuthResp{AccessToken: access_token, RefreshToken: refresh_token, Error: ""}, nil
+	return &proto.AuthResp{AccessToken: access_token, RefreshToken: refresh_token, Error: ""}, nil
 }
 
-func (s *AuthServer) AuthCheck(ctx context.Context, req *authpb.AuthCheckReq) (*authpb.AuthCheckResp, error) {
+func (s *AuthServer) AuthCheck(ctx context.Context, req *proto.AuthCheckReq) (*proto.AuthCheckResp, error) {
 	if req == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Request is nil")
 	}
@@ -147,50 +142,47 @@ func (s *AuthServer) AuthCheck(ctx context.Context, req *authpb.AuthCheckReq) (*
 		if err := rule(*token); err != nil {
 			// 검증 실패 처리
 			fmt.Println("Token validation failed:", err)
-			return &authpb.AuthCheckResp{
+			return &proto.AuthCheckResp{
 				Valid: false,
 				Error: err.Error(),
 			}, nil
 		}
 	}
 
-	// 토큰 검증 성공 처리
+	// // 토큰 검증 성공 처리
 
-	// 토큰을 디코딩 하여 id와 role을 가져온다.
-	id, err := token.GetString("id")
-	if err != nil {
-		return nil, err
-	}
+	// // 토큰을 디코딩 하여 id와 role을 가져온다.
+	// id, err := token.GetString("id")
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	// account 정보를 가져온다.
-	accountResp, err := s.accountClient.GetAccount(ctx, &accountpb.GetAccountReq{
-		AccountId: id,
-	})
+	// // account 정보를 가져온다.
+	// accountResp, err := s.accountClient.GetAccount(ctx, &proto.GetAccountReq{
+	// 	AccountId: id,
+	// })
 
-	if err != nil {
-		return nil, err
-	}
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	// account 정보가 없으면 인증 실패 처리
-	if accountResp.Account == nil {
-		return &authpb.AuthCheckResp{
-			Valid: false,
-			Error: "Account not found",
-		}, nil
-	}
+	// if accountResp.Account == nil {
+	// 	return &proto.AuthCheckResp{
+	// 		Valid: false,
+	// 		Error: "Account not found",
+	// 	}, nil
+	// }
 
 	// 인증 성공 처리
-	log.Println("Token validation successful")
-	log.Println("Account ID:", accountResp.Account.Id)
-	log.Println("Account Role:", accountResp.Account.Role)
 
-	return &authpb.AuthCheckResp{
+	return &proto.AuthCheckResp{
 		Valid: true,
 		Error: "",
 	}, nil
 }
 
-func (s *AuthServer) generateAccessToken(account *accountpb.Account) (string, error) {
+func (s *AuthServer) generateAccessToken(account *proto.Account) (string, error) {
 	token := paseto.NewToken()
 
 	token.SetAudience("audience")
@@ -225,4 +217,71 @@ func (s *AuthServer) generateRefreshToken(accountId string) (string, error) {
 
 	signed := token.V4Sign(s.secretKey, nil)
 	return signed, nil
+}
+
+func (s *AuthServer) GetAccountByToken(ctx context.Context, req *proto.GetAccountByTokenReq) (*proto.GetAccountByTokenResp, error) {
+	if req == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Request is nil")
+	}
+
+	tokenString := req.Token
+	parser := paseto.NewParser()
+
+	// SecretKey로부터 PublicKey 생성
+	publicKey := s.secretKey.Public()
+
+	// Paseto 토큰 파싱 및 검증
+	token, err := parser.ParseV4Public(publicKey, tokenString, nil)
+	if err != nil {
+		log.Println("Failed to parse token: ", err)
+		return nil, err
+	}
+
+	// 토큰 규칙 검증
+	rules := []paseto.Rule{
+		paseto.ForAudience("audience"),
+		paseto.IssuedBy("issuer"),
+		paseto.Subject("subject"),
+		paseto.NotBeforeNbf(),
+		paseto.NotExpired(),
+		paseto.IdentifiedBy("identifier"),
+	}
+
+	for _, rule := range rules {
+		if err := rule(*token); err != nil {
+			// 검증 실패 처리
+			fmt.Println("Token validation failed:", err)
+			return &proto.GetAccountByTokenResp{
+				Account: nil,
+			}, nil
+		}
+	}
+
+	// 토큰 검증 성공 처리
+
+	// 토큰을 디코딩 하여 id와 role을 가져온다.
+	id, err := token.GetString("id")
+	if err != nil {
+		return nil, err
+	}
+
+	// account 정보를 가져온다.
+	accountResp, err := s.accountClient.GetAccount(ctx, &proto.GetAccountReq{
+		AccountId: id,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	// account 정보가 없으면 인증 실패 처리
+	if accountResp.Account == nil {
+		return &proto.GetAccountByTokenResp{
+			Account: nil,
+		}, nil
+	}
+
+	return &proto.GetAccountByTokenResp{
+		Account: accountResp.Account,
+	}, nil
 }
