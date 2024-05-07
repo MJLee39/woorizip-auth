@@ -22,7 +22,7 @@ import (
 const (
 	defaultTokenExpiration        = time.Hour * 24
 	defaultRefreshTokenExpiration = time.Hour * 24 * 7
-	listenPort                    = ":8080"
+	listenPort                    = ":80"
 	accountServer                 = "service-account:80"
 )
 
