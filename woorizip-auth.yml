@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: authapp
-        image: 211125685751.dkr.ecr.ap-northeast-2.amazonaws.com/woorizip-auth:20240507003844
+        image: 211125685751.dkr.ecr.ap-northeast-2.amazonaws.com/woorizip-auth:20240507011440
         ports:
         - containerPort: 80
 ---
