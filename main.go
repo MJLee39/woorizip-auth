@@ -110,7 +110,7 @@ func (s *AuthServer) Auth(ctx context.Context, req *proto.AuthReq) (*proto.AuthR
 	return &proto.AuthResp{AccessToken: access_token, RefreshToken: refresh_token, Error: ""}, nil
 }
 
-func (s *AuthServer) AuthCheck(ctx context.Context, req *proto.AuthCheckReq) (*proto.AuthCheckResp, error) {
+func (s *AuthServer) AuthValidation(ctx context.Context, req *proto.AuthValidationReq) (*proto.AuthValidationResp, error) {
 	if req == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Request is nil")
 	}
@@ -142,7 +142,7 @@ func (s *AuthServer) AuthCheck(ctx context.Context, req *proto.AuthCheckReq) (*p
 		if err := rule(*token); err != nil {
 			// 검증 실패 처리
 			fmt.Println("Token validation failed:", err)
-			return &proto.AuthCheckResp{
+			return &proto.AuthValidationResp{
 				Valid: false,
 				Error: err.Error(),
 			}, nil
@@ -176,7 +176,7 @@ func (s *AuthServer) AuthCheck(ctx context.Context, req *proto.AuthCheckReq) (*p
 
 	// 인증 성공 처리
 
-	return &proto.AuthCheckResp{
+	return &proto.AuthValidationResp{
 		Valid: true,
 		Error: "",
 	}, nil
