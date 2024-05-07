@@ -93,21 +93,42 @@ func (s *AuthServer) Auth(ctx context.Context, req *proto.AuthReq) (*proto.AuthR
 		Provider:       req.Provider,
 		ProviderUserId: req.ProviderUserId,
 	})
+
+	var account *proto.Account
+
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "계정이 존재하지 않음")
+		if status.Code(err) == codes.NotFound {
+			// 계정이 없으면 계정 생성
+			createAccountResp, err := s.accountClient.CreateAccount(ctx, &proto.CreateAccountReq{
+				Provider:       req.Provider,
+				ProviderUserId: req.ProviderUserId,
+			})
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "Error: %v", err)
+			}
+			account = createAccountResp.Account
+		} else {
+			return nil, status.Errorf(codes.Internal, "Error: %v", err)
+		}
+	} else {
+		account = accountResp.Account
 	}
 
-	access_token, err := s.generateAccessToken(accountResp.Account)
+	access_token, err := s.generateAccessToken(account)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to generate access token: %v", err)
 	}
 
-	refresh_token, err := s.generateRefreshToken(accountResp.Account.Id)
+	refresh_token, err := s.generateRefreshToken(account.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to generate refresh token: %v", err)
 	}
 
-	return &proto.AuthResp{AccessToken: access_token, RefreshToken: refresh_token, Error: ""}, nil
+	return &proto.AuthResp{
+		AccessToken:  access_token,
+		RefreshToken: refresh_token,
+		Account:      account,
+	}, nil
 }
 
 func (s *AuthServer) AuthValidation(ctx context.Context, req *proto.AuthValidationReq) (*proto.AuthValidationResp, error) {
@@ -274,7 +295,7 @@ func (s *AuthServer) AuthCheckAccount(ctx context.Context, req *proto.AuthCheckA
 		ProviderUserId: providerUserId,
 	})
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "계정이 존재하지 않음")
+		return nil, status.Errorf(codes.NotFound, "not exist account")
 	}
 
 	return &proto.AuthCheckAccountResp{Account: accountResp.Account}, nil
