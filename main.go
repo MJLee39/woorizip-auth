@@ -115,66 +115,13 @@ func (s *AuthServer) AuthValidation(ctx context.Context, req *proto.AuthValidati
 		return nil, status.Errorf(codes.InvalidArgument, "Request is nil")
 	}
 
-	tokenString := req.Token
-	parser := paseto.NewParser()
-
-	// SecretKey로부터 PublicKey 생성
-	publicKey := s.secretKey.Public()
-
-	// Paseto 토큰 파싱 및 검증
-	token, err := parser.ParseV4Public(publicKey, tokenString, nil)
+	_, err := s.validateToken(req.Token)
 	if err != nil {
-		log.Println("Failed to parse token: ", err)
-		return nil, err
+		return &proto.AuthValidationResp{
+			Valid: false,
+			Error: err.Error(),
+		}, nil
 	}
-
-	// 토큰 규칙 검증
-	rules := []paseto.Rule{
-		paseto.ForAudience("audience"),
-		paseto.IssuedBy("issuer"),
-		paseto.Subject("subject"),
-		paseto.NotBeforeNbf(),
-		paseto.NotExpired(),
-		paseto.IdentifiedBy("identifier"),
-	}
-
-	for _, rule := range rules {
-		if err := rule(*token); err != nil {
-			// 검증 실패 처리
-			fmt.Println("Token validation failed:", err)
-			return &proto.AuthValidationResp{
-				Valid: false,
-				Error: err.Error(),
-			}, nil
-		}
-	}
-
-	// // 토큰 검증 성공 처리
-
-	// // 토큰을 디코딩 하여 id와 role을 가져온다.
-	// id, err := token.GetString("id")
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// // account 정보를 가져온다.
-	// accountResp, err := s.accountClient.GetAccount(ctx, &proto.GetAccountReq{
-	// 	AccountId: id,
-	// })
-
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// account 정보가 없으면 인증 실패 처리
-	// if accountResp.Account == nil {
-	// 	return &proto.AuthCheckResp{
-	// 		Valid: false,
-	// 		Error: "Account not found",
-	// 	}, nil
-	// }
-
-	// 인증 성공 처리
 
 	return &proto.AuthValidationResp{
 		Valid: true,
@@ -224,7 +171,40 @@ func (s *AuthServer) GetAccountByToken(ctx context.Context, req *proto.GetAccoun
 		return nil, status.Errorf(codes.InvalidArgument, "Request is nil")
 	}
 
-	tokenString := req.Token
+	token, err := s.validateToken(req.Token)
+	if err != nil {
+		return nil, err
+	}
+
+	claims, err := decodeToken(token)
+	if err != nil {
+		return nil, err
+	}
+
+	id := claims["id"].(string)
+
+	// account 정보를 가져온다.
+	accountResp, err := s.accountClient.GetAccount(ctx, &proto.GetAccountReq{
+		AccountId: id,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	// account 정보가 없으면 인증 실패 처리
+	if accountResp.Account == nil {
+		return &proto.GetAccountByTokenResp{
+			Account: nil,
+		}, nil
+	}
+
+	return &proto.GetAccountByTokenResp{
+		Account: accountResp.Account,
+	}, nil
+}
+
+func (s *AuthServer) validateToken(tokenString string) (*paseto.Token, error) {
 	parser := paseto.NewParser()
 
 	// SecretKey로부터 PublicKey 생성
@@ -251,37 +231,51 @@ func (s *AuthServer) GetAccountByToken(ctx context.Context, req *proto.GetAccoun
 		if err := rule(*token); err != nil {
 			// 검증 실패 처리
 			fmt.Println("Token validation failed:", err)
-			return &proto.GetAccountByTokenResp{
-				Account: nil,
-			}, nil
+			return nil, err
 		}
 	}
 
-	// 토큰 검증 성공 처리
+	return token, nil
+}
 
-	// 토큰을 디코딩 하여 id와 role을 가져온다.
-	id, err := token.GetString("id")
+func decodeToken(token *paseto.Token) (map[string]interface{}, error) {
+	claims := make(map[string]interface{})
+
+	// 토큰의 모든 클레임을 순회하면서 map에 저장
+	for key, value := range token.Claims() {
+		claims[key] = value
+	}
+
+	return claims, nil
+}
+
+// auth/login
+func (s *AuthServer) AuthCheckAccount(ctx context.Context, req *proto.AuthCheckAccountReq) (*proto.AuthCheckAccountResp, error) {
+	if req == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Request is nil")
+	}
+	token, err := s.validateToken(req.Token)
 	if err != nil {
 		return nil, err
 	}
 
-	// account 정보를 가져온다.
-	accountResp, err := s.accountClient.GetAccount(ctx, &proto.GetAccountReq{
-		AccountId: id,
+	claims, err := decodeToken(token)
+	if err != nil {
+		return nil, err
+	}
+
+	// claims에서 필요한 값을 가져옴
+
+	provider := claims["provider"].(string)
+	providerUserId := claims["providerUserId"].(string)
+
+	accountResp, err := s.accountClient.GetAccountByProvider(ctx, &proto.GetAccountByProviderReq{
+		Provider:       provider,
+		ProviderUserId: providerUserId,
 	})
-
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.NotFound, "계정이 존재하지 않음")
 	}
 
-	// account 정보가 없으면 인증 실패 처리
-	if accountResp.Account == nil {
-		return &proto.GetAccountByTokenResp{
-			Account: nil,
-		}, nil
-	}
-
-	return &proto.GetAccountByTokenResp{
-		Account: accountResp.Account,
-	}, nil
+	return &proto.AuthCheckAccountResp{Account: accountResp.Account}, nil
 }
