@@ -14,6 +14,10 @@ github.com/TeamWAF/woorizip-gateway v0.0.0-20240507053734-b4ecb3472cef h1:IO/xWN
 github.com/TeamWAF/woorizip-gateway v0.0.0-20240507053734-b4ecb3472cef/go.mod h1:QyjnMmUIMaE3cuitx+4GcR/5tg2jEm+bxvGV8IaCYRA=
 github.com/TeamWAF/woorizip-gateway v0.0.0-20240507054956-488c500ad927 h1:gSr+BPDruPfSrWi2RTIhzLlmJHrDZKEqlMYYRs986wg=
 github.com/TeamWAF/woorizip-gateway v0.0.0-20240507054956-488c500ad927/go.mod h1:QyjnMmUIMaE3cuitx+4GcR/5tg2jEm+bxvGV8IaCYRA=
+github.com/TeamWAF/woorizip-gateway v0.0.0-20240508131132-737fc3140333 h1:Nr1Z56WrlNEWqA2xN/JMAlCdAETXPv/V6HRdV+esjeI=
+github.com/TeamWAF/woorizip-gateway v0.0.0-20240508131132-737fc3140333/go.mod h1:QyjnMmUIMaE3cuitx+4GcR/5tg2jEm+bxvGV8IaCYRA=
+github.com/TeamWAF/woorizip-gateway v0.0.0-20240508131954-230d6c14a222 h1:02mNvOCLqJwaA4n/UgRCossugquNwP7slNOWji672Y8=
+github.com/TeamWAF/woorizip-gateway v0.0.0-20240508131954-230d6c14a222/go.mod h1:QyjnMmUIMaE3cuitx+4GcR/5tg2jEm+bxvGV8IaCYRA=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/golang/protobuf v1.5.4 h1:i7eJL8qZTpSEXOPTxNKhASYpMn+8e5Q6AdndVa1dWek=

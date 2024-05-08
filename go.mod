@@ -4,7 +4,7 @@ go 1.22.2
 
 require (
 	aidanwoods.dev/go-paseto v1.5.1
-	github.com/TeamWAF/woorizip-gateway v0.0.0-20240507054956-488c500ad927
+	github.com/TeamWAF/woorizip-gateway v0.0.0-20240508131954-230d6c14a222
 	google.golang.org/grpc v1.63.2
 )
 
